@@ -19,7 +19,9 @@ function promisify(request) {
 // Opens questDB. Version 1 has three stores: "heroes", "inventory", and "powers".
 // Gives back (a promise for) the open database.
 function openDB() {
-  throw new Error("openDB() is not built yet (Level 1)");
+  const request = IndexedDB.open(DB_NAME, DB_VERSION);
+
+  
 }
 
 // ---------- Level 1: Heroes ----------
