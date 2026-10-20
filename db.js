@@ -18,10 +18,26 @@ function promisify(request) {
 // ---------- Level 1: Open the database ----------
 // Opens questDB. Version 1 has three stores: "heroes", "inventory", and "powers".
 // Gives back (a promise for) the open database.
-function openDB() {
-  const request = IndexedDB.open(DB_NAME, DB_VERSION);
+function openDB(){
+  const request = indexedDB.open(DB_NAME, DB_VERSION);
 
-  
+  request.onupgradeneeded = () => {
+    const db = request.result;
+
+    if (!db.objectStoreNames.contains("heroes")) {
+      db.createObjectStore("heroes", {keyPath: "name"});
+    }
+
+    if (!db.objectStoreNames.contains("inventory")) {
+      db.createObjectStore("inventory", {keyPath: "id"});
+    }
+
+    if (!db.objectStoreNames.contains("powers")) {
+      db.createObjectStore("powers", {keyPath: "id"});
+    }
+  };
+
+  return promisify(request);
 }
 
 // ---------- Level 1: Heroes ----------
@@ -35,12 +51,31 @@ async function createHero(name, heroClass, attributes) {
 
 // name: a hero's name. Gives back that hero's record (or undefined).
 async function getHero(name) {
-  throw new Error("getHero() is not built yet (Level 1)");
+  const db = await openDB();
+  const store = db.transaction("cart", "readwrite").objectStore("cart");
+
+  const item = await promisify(store.get(name.id));
+
+  if(item) {
+    item.qty = item.qty + 1;
+    await promisify(store.put(item));
+  } else {
+    await promisify(store.add({
+      id: name.id,
+      name: name.name,
+      price: name.price,
+      emoji: name.emoji,
+      qty: 1,
+    }));
+  }
 }
 
 // Gives back an array of every hero record.
 async function getAllHeroes() {
-  throw new Error("getAllHeroes() is not built yet (Level 1)");
+  const db = await openDB();
+  const store = db.transaction("heroes").objectStore("heroes");
+  // no mode = "readonly"
+  return promisify(store.getAll());
 }
 
 // hero: a hero record that game.js changed (new hp, xp, level, or gold).
