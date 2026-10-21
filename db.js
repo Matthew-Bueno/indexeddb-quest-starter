@@ -46,28 +46,32 @@ function openDB(){
 // Build a NEW hero record (see the DATA SPEC) and save it. Give back the record.
 // A name that is already taken should fail, not replace the old hero.
 async function createHero(name, heroClass, attributes) {
-  throw new Error("createHero() is not built yet (Level 1)");
+  const hero = {
+    name: name,
+    heroClass: heroClass,
+    level: 1,
+    xp: 0,
+    hp: 100,
+    maxHp: 100,
+    gold: 0,
+    attributes: attributes,
+    createdAt: new Date().toISOString()
+  };
+
+  const db = await openDB();
+  const store = db.transaction("heroes", "readwrite").objectStore("heroes");
+
+  await promisify(store.add(hero));
+
+  return hero;
 }
 
 // name: a hero's name. Gives back that hero's record (or undefined).
 async function getHero(name) {
   const db = await openDB();
-  const store = db.transaction("cart", "readwrite").objectStore("cart");
+  const store = db.transaction("heroes").objectStore("heroes");
 
-  const item = await promisify(store.get(name.id));
-
-  if(item) {
-    item.qty = item.qty + 1;
-    await promisify(store.put(item));
-  } else {
-    await promisify(store.add({
-      id: name.id,
-      name: name.name,
-      price: name.price,
-      emoji: name.emoji,
-      qty: 1,
-    }));
-  }
+  return promisify(store.get(name));
 }
 
 // Gives back an array of every hero record.
@@ -81,7 +85,10 @@ async function getAllHeroes() {
 // hero: a hero record that game.js changed (new hp, xp, level, or gold).
 // Save it over the old one.
 async function updateHero(hero) {
-  throw new Error("updateHero() is not built yet (Level 1)");
+  const db = await openDB();
+  const store = db.transaction("heroes", "readwrite").objectStore("heroes");
+
+  return promisify(store.put(hero));
 }
 
 // ---------- Level 2: Inventory ----------
@@ -89,7 +96,26 @@ async function updateHero(hero) {
 //   { itemId: "healing-potion", name: "Healing Potion", type: "potion", icon: "🧪" }
 // Not in that hero's bag yet? Save it with qty 1. Already there? Add 1 to qty.
 async function addItem(heroName, item) {
-  throw new Error("addItem() is not built yet (Level 2)");
+  const db = await openDB();
+const store = db.transaction("inventory", "readwrite").objectStore("inventory");
+
+const id = heroName + "-" + item.itemId;
+const existingItem = await promisify(store.get(id));
+
+if(existingItem) {
+    existingItem.qty = existingItem.qty + 1;
+    await promisify(store.put(existingItem));
+  } else {
+    await promisify(store.add({
+      id: id,
+      hero: heroName,
+      itemId: item.itemId,
+      name: item.name,
+      type: item.type,
+      icon: item.icon,
+      qty: 1,
+    }));
+  }
 }
 
 // heroName: whose bag. Gives back ONLY that hero's items.
