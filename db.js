@@ -120,13 +120,33 @@ if(existingItem) {
 
 // heroName: whose bag. Gives back ONLY that hero's items.
 async function getInventory(heroName) {
-  throw new Error("getInventory() is not built yet (Level 2)");
+  const db = await openDB();
+  const store = db.transaction("inventory").objectStore("inventory");
+
+  const items = await promisify(store.getAll());
+
+  return items.filter(item => item.hero === heroName);
 }
 
 // heroName: whose bag. itemId: which item, like "healing-potion".
 // Takes 1 away from qty. At 0, the item leaves the bag.
 async function removeItem(heroName, itemId) {
-  throw new Error("removeItem() is not built yet (Level 2)");
+  const db = await openDB();
+  const store = db.transaction("inventory", "readwrite").objectStore("inventory");
+
+  const id = heroName + "-" + itemId;
+  const item = await promisify(store.get(id));
+
+  if(!item) return;
+
+  item.qty = item.qty - 1;
+
+  if (item.qty <  1){
+    await promisify(store.delete(id));
+  } else {
+    await promisify(store.put(item));
+  }
+    
 }
 
 // ---------- Level 2: Powers ----------
@@ -134,19 +154,73 @@ async function removeItem(heroName, itemId) {
 //   { powerId: "magic-missile", name: "Magic Missile", description: "...", learnAt: 1 }
 // Saves that the hero knows this power.
 async function learnPower(heroName, power) {
-  throw new Error("learnPower() is not built yet (Level 2)");
+  const db = await openDB();
+  const store = db.transaction("powers", "readwrite").objectStore("powers");
+
+  const id = heroName + "-" + power.powerId;
+
+  const powerRecord = {
+    id: id,
+    hero: heroName,
+    powerId: power.powerId,
+    name: power.name,
+    description: power.description,
+    learnAt: power.learnAt
+  };
+
+  await promisify(store.put(powerRecord));
 }
 
 // heroName: whose powers. Gives back ONLY that hero's powers.
 async function getPowers(heroName) {
-  throw new Error("getPowers() is not built yet (Level 2)");
+  const db = await openDB();
+  const store = db.transaction("powers").objectStore("powers");
+
+  const items = await promisify(store.getAll());
+
+  return items.filter(item => item.hero === heroName);
 }
 
 // ---------- Level 2: Delete ----------
 // name: a hero's name. Removes the hero AND everything that belongs to them
 // (their items and powers, and at Level 3, their journal too).
 async function deleteHero(name) {
-  throw new Error("deleteHero() is not built yet (Level 2)");
+  const db = await openDB();
+
+  const transaction = db.transaction(
+    ["heroes", "inventory", "powers"],
+    "readwrite"
+  );
+
+  const heroStore = transaction.objectStore("heroes");
+  const inventoryStore = transaction.objectStore("inventory");
+  const powerStore = transaction.objectStore("powers");
+
+  const inventoryRequest = inventoryStore.getAll();
+
+  inventoryRequest.onsuccess = () => {
+    const items = inventoryRequest.result;
+
+    items.forEach((item) => {
+      if (item.hero === name) {
+        inventoryStore.delete(item.id);
+      }
+    });
+  };
+
+  const powersRequest = powerStore.getAll();
+
+  powersRequest.onsuccess = () => {
+    const powers = powersRequest.result;
+
+    powers.forEach((power) => {
+      if (power.hero === name) {
+        powerStore.delete(power.id);
+      }
+    });
+  };
+
+  heroStore.delete(name);
 }
 
 // ---------- Level 3: Adventure journal (version 2) ----------
