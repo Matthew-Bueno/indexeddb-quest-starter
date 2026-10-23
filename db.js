@@ -5,7 +5,7 @@
 // like the spec, so your teacher can open DevTools and find everything.
 
 const DB_NAME = "questDB";
-const DB_VERSION = 1;
+const DB_VERSION = 2;
 
 // ALREADY DONE: wraps an IndexedDB request in a promise so you can use await.
 function promisify(request) {
@@ -35,6 +35,13 @@ function openDB(){
     if (!db.objectStoreNames.contains("powers")) {
       db.createObjectStore("powers", {keyPath: "id"});
     }
+
+    if (!db.objectStoreNames.contains("journal")) {
+      db.createObjectStore("journal",{
+        keyPath: "id",
+        autoIncrement: true
+      });
+      }
   };
 
   return promisify(request);
@@ -227,10 +234,26 @@ async function deleteHero(name) {
 // heroName: whose journal. text: what happened, like "Beat a Goblin. +30 XP".
 // Saves a new journal entry.
 async function addJournal(heroName, text) {
-  throw new Error("addJournal() is not built yet (Level 3)");
+  const db = await openDB();
+  const store = db.transaction("journal", "readwrite").objectStore("journal");
+
+  const entry = {
+    hero: heroName,
+    text: text,
+    createdAt: new Date().toISOString()
+  };
+
+  await promisify(store.add(entry));
 }
 
 // heroName: whose journal. Gives back ONLY that hero's entries, newest first.
 async function getJournal(heroName) {
-  throw new Error("getJournal() is not built yet (Level 3)");
+  const db = await openDB();
+  const store = db.transaction("journal").objectStore("journal");
+
+  const entries = await promisify(store.getAll());
+
+  return entries
+    .filter(entry => entry.hero === heroName)
+    .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
 }
